@@ -1,56 +1,57 @@
 package com.example.myfristapi
-
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.myfristapi.adapter.ProductAdapter
-import com.example.myfristapi.api.ProductItem
-import com.example.myfristapi.api.RetrofitInstance
+import com.example.movieapi.api.Movie
+import com.example.movieapi.api.RetrofitInstance
+import com.example.movieapi.adapter.MovieAdapter
 import com.example.myfristapi.databinding.ActivityMainBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val movieAdapter = MovieAdapter { movie ->
+        // Handle movie item click (e.g., navigate to movie detail)
+        Toast.makeText(this, "Clicked: ${movie.Title}", Toast.LENGTH_SHORT).show()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnFetch.setOnClickListener {
-            val apiUrl = binding.etApiUrl.text.toString().trim()
+        // Set up RecyclerView
+        binding.recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.recyclerView.adapter = movieAdapter
 
-            if (apiUrl.isNotBlank()) {
-                fetchProducts(apiUrl)
-            } else {
-                Toast.makeText(this, "Enter API URL", Toast.LENGTH_SHORT).show()
+        // Fetch popular movies
+        fetchPopularMovies()
+    }
+
+    private fun fetchPopularMovies() {
+        lifecycleScope.launch {
+            try {
+                val response = RetrofitInstance.api.searchMovies(
+                    query = "Guardians of the Galaxy Vol. 2", // Replace with movie name or query
+                    apiKey = "f5de7163"  // OMDb API key
+                )
+
+                if (response.isSuccessful) {
+                    val movieList = response.body()?.Search ?: emptyList()  // Handle the Search response
+                    movieAdapter.submitList(movieList)
+                } else {
+                    Log.e("API_ERROR", "Failed to fetch: ${response.message()}")
+                    Toast.makeText(this@MainActivity, "Failed to fetch popular movies", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("API_ERROR", "Error: ${e.message}")
+                Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
-
-    private fun fetchProducts(url: String) {
-        RetrofitInstance.getApi().getProducts(url)
-            .enqueue(object : Callback<List<ProductItem>> {
-                override fun onResponse(
-                    call: Call<List<ProductItem>>,
-                    response: Response<List<ProductItem>>
-                ) {
-                    if (response.isSuccessful && response.body() != null) {
-                        val products = response.body()!!
-                        binding.rvProducts.layoutManager = LinearLayoutManager(this@MainActivity)
-                        binding.rvProducts.adapter = ProductAdapter(products)
-                    } else {
-                        Toast.makeText(this@MainActivity, "No data found", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<List<ProductItem>>, t: Throwable) {
-                    Toast.makeText(this@MainActivity, "Error: ${t.message}", Toast.LENGTH_LONG).show()
-                }
-            })
-    }
 }
+

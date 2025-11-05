@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">MYFrist API</string>
+    <string name="app_name" translatable="false">MYFrist API</string>
+    <string name="movie_poster" translatable="false">Movie Poster</string>
+
 </resources>
